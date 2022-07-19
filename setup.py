@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from benevolent_boilerplate import __version__
 
 setup(
-    name='my_pip_package',
+    name='benevolent_boilerplate',
     version=__version__,
 
     url='https://github.com/iliya-malecki/benevolent_boilerplate',
