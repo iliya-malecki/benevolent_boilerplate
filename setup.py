@@ -16,7 +16,6 @@ setup(
         'plotly == 5.9.0',
         'pandas >= 1.0',
         'numpy >= 1.20',
-        'itertools',
         'scikit-learn >= 1.0',
     ],
 )
