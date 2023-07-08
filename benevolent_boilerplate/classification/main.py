@@ -142,70 +142,91 @@ def qcplot_dataframes(fact, pred, kind='all', rounding=2, pxfigsize=(600,400), t
         prs.show()
 
 
-def qcplot(fact, pred, kind='all', rounding=2, pxfigsize=(800,400), template='plotly_dark'):
+def qcplot(
+    fact:'pd.DataFrame|pd.Series',
+    pred:'pd.DataFrame|pd.Series',
+    kind='all',
+    rounding=2,
+    pxfigsize=(800,400),
+    template='plotly_dark'
+):
+    '''
+    Classifier prediction quality check. Accepts several input formats for convenience
 
-        if isinstance(fact, pd.Series) and isinstance(pred, pd.Series):
+    #1. DataFrame, DataFrame       => column-wise comparison
+        This is for when you have two one-hot dataframes of facts and predictions
 
-            if not (is_proba(fact) and is_proba(pred)):
+    #2. Series,    DataFrame       => one-hot encoding and then #1
+        This is when your fact is using ordinal encoding,
+        akin to keras.losses.sparse_categorical_crossentropy
 
-                raise ClassificationQCError(
-                    'Passing two series implies a simplified binary classification, '
-                    'with necessarily numeric values. Series must be between(0,1)') from None
+    #3. Series,    Series          => conversion for binary classification and then #1
+        this is for the rather popular edgecase of binary classification,
+        where prediction is a float [0,1] and it implies a '0' class and a '1' class.
+    '''
 
-            return qcplot(
-                fact,
-                pd.DataFrame({
-                    1: pred,
-                    0: 1-pred
-                }),
-                kind=kind,
-                rounding=rounding,
-                pxfigsize=pxfigsize,
-                template=template
-            )
+    if isinstance(fact, pd.Series) and isinstance(pred, pd.Series):
 
-        if isinstance(fact, pd.Series) and isinstance(pred, pd.DataFrame):
+        if not (is_proba(fact) and is_proba(pred)):
 
-            fact_levels = pd.Index(fact.unique())
-            missing_in_fact = pred.columns.difference(fact_levels)
-            missing_in_pred = fact_levels.difference(pred.columns)
-            if not missing_in_fact.empty:
-                print(f'qcplot: `fact` is missing levels {missing_in_fact.to_list()}')
-            if not missing_in_pred.empty:
-                print(f'qcplot: `pred` is missing level columns {missing_in_pred.to_list()}')
+            raise ClassificationQCError(
+                'Passing two series implies a simplified binary classification, '
+                'with necessarily numeric values. Series must be between(0,1)') from None
 
-            levels = pred.columns.intersection(fact_levels)
-            fact_onehot = label_binarize(fact, classes=levels)
+        return qcplot(
+            fact,
+            pd.DataFrame({
+                1: pred,
+                0: 1-pred
+            }),
+            kind=kind,
+            rounding=rounding,
+            pxfigsize=pxfigsize,
+            template=template
+        )
 
-            if len(levels) == 2:
-                fact_onehot = np.c_[1 - fact_onehot, fact_onehot] # order matters, last level of the two is the positive case
+    if isinstance(fact, pd.Series) and isinstance(pred, pd.DataFrame):
 
-            return qcplot(
-                pd.DataFrame(fact_onehot, columns=levels),
-                pred.reindex(columns=levels),
-                kind=kind,
-                rounding=rounding,
-                pxfigsize=pxfigsize,
-                template=template
-            )
+        fact_levels = pd.Index(fact.unique())
+        missing_in_fact = pred.columns.difference(fact_levels)
+        missing_in_pred = fact_levels.difference(pred.columns)
+        if not missing_in_fact.empty:
+            print(f'qcplot: `fact` is missing levels {missing_in_fact.to_list()}')
+        if not missing_in_pred.empty:
+            print(f'qcplot: `pred` is missing level columns {missing_in_pred.to_list()}')
 
-        if isinstance(fact, pd.DataFrame) and isinstance(pred, pd.DataFrame):
-            return qcplot_dataframes(
-                fact,
-                pred,
-                kind=kind,
-                rounding=rounding,
-                pxfigsize=pxfigsize,
-                template=template
-            )
+        levels = pred.columns.intersection(fact_levels)
+        fact_onehot = label_binarize(fact, classes=levels)
 
-        raise ClassificationQCError(
-            f'`fact` (of type "{type(fact)}") and `pred` (of type "{type(pred)}")'
-            'dont match any of the possible combinations, and thus, outcomes:\n'
-            '#1. DataFrame, DataFrame       => column-wise comparison\n'
-            '#2. Series,    DataFrame       => one-hot encoding and then #1\n'
-            '#3. Series,    Series          => conversion for binary classification and then #1'
-        ) from None
+        if len(levels) == 2:
+            fact_onehot = np.c_[1 - fact_onehot, fact_onehot] # order matters, last level of the two is the positive case
+
+        return qcplot(
+            pd.DataFrame(fact_onehot, columns=levels),
+            pred.reindex(columns=levels),
+            kind=kind,
+            rounding=rounding,
+            pxfigsize=pxfigsize,
+            template=template
+        )
+
+    if isinstance(fact, pd.DataFrame) and isinstance(pred, pd.DataFrame):
+        return qcplot_dataframes(
+            fact,
+            pred,
+            kind=kind,
+            rounding=rounding,
+            pxfigsize=pxfigsize,
+            template=template
+        )
+
+    raise ClassificationQCError(
+        f'`fact` (of type "{type(fact)}") and `pred` (of type "{type(pred)}")'
+        'dont match any of the possible combinations, and thus, outcomes:\n'
+        '#1. DataFrame, DataFrame       => column-wise comparison\n'
+        '#2. Series,    DataFrame       => one-hot encoding and then #1\n'
+        '#3. Series,    Series          => conversion for binary classification and then #1'
+    ) from None
 
 
 
