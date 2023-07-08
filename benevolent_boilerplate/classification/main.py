@@ -16,7 +16,7 @@ from sklearn.metrics import (
 
 def is_proba(s:pd.Series):
     return (
-        pd.api.types.is_numeric_dtype(s) 
+        pd.api.types.is_numeric_dtype(s)
         and not pd.api.types.is_bool_dtype(s)
         and s.between(0, 1).all()
     )
@@ -45,7 +45,7 @@ def qcplot_dataframes(fact, pred, kind='all', rounding=2, pxfigsize=(600,400), t
             px.bar(
                 fact.sum().sort_values().rename('counts'),
                 title=f'Class counts',
-                width=pxfigsize[0], 
+                width=pxfigsize[0],
                 height=pxfigsize[1],
                 hover_data={'fraction':class_fractions.round(3)}
             )
@@ -57,21 +57,21 @@ def qcplot_dataframes(fact, pred, kind='all', rounding=2, pxfigsize=(600,400), t
 
         rocs = go.Figure(
             layout={
-                'width':pxfigsize[0], 
-                'height':pxfigsize[1], 
-                'template':f'{template}+slim',
+                'width':pxfigsize[0],
+                'height':pxfigsize[1],
+                'template':template,
                 'xaxis':{'title':'FPR'},
                 'yaxis':{'title':'TPR'},
             })
 
         for name_of_class, color in zip(
-            fact.columns, 
+            fact.columns,
             itertools.cycle(px.colors.qualitative.Safe)
-        ): 
+        ):
             fpr, tpr, thr = roc_curve(fact[name_of_class], pred[name_of_class].round(rounding))
             rocs.add_trace(
                 go.Scatter(
-                    x=fpr, 
+                    x=fpr,
                     y=tpr,
                     name=f'{name_of_class} (ROC-AUC = {roc_auc_score(fact[name_of_class], pred[name_of_class]):.3f})',
                     customdata = thr,
@@ -99,22 +99,22 @@ def qcplot_dataframes(fact, pred, kind='all', rounding=2, pxfigsize=(600,400), t
 
         prs = go.Figure(
             layout={
-                'width':pxfigsize[0], 
-                'height':pxfigsize[1], 
-                'template':f'{template}+slim',
+                'width':pxfigsize[0],
+                'height':pxfigsize[1],
+                'template':template,
                 'xaxis':{'title':'Recall'},
                 'yaxis':{'title':'Precision'},
             })
 
         for name_of_class, color in zip(
-            fact.columns, 
+            fact.columns,
             itertools.cycle(px.colors.qualitative.Safe)
         ):
-        
+
             precision, recall, thr = precision_recall_curve(fact[name_of_class], pred[name_of_class].round(rounding))
             prs.add_trace(
                 go.Scatter(
-                    x=recall, 
+                    x=recall,
                     y=precision,
                     name=f'{name_of_class} (AP = {average_precision_score(fact[name_of_class], pred[name_of_class]):.3f})',
                     customdata = thr,
@@ -173,13 +173,13 @@ def qcplot(fact, pred, kind='all', rounding=2, pxfigsize=(800,400), template='pl
                 print(f'qcplot: `fact` is missing levels {missing_in_fact.to_list()}')
             if not missing_in_pred.empty:
                 print(f'qcplot: `pred` is missing level columns {missing_in_pred.to_list()}')
-                
+
             levels = pred.columns.intersection(fact_levels)
             fact_onehot = label_binarize(fact, classes=levels)
 
             if len(levels) == 2:
                 fact_onehot = np.c_[1 - fact_onehot, fact_onehot] # order matters, last level of the two is the positive case
-            
+
             return qcplot(
                 pd.DataFrame(fact_onehot, columns=levels),
                 pred.reindex(columns=levels),
@@ -198,7 +198,7 @@ def qcplot(fact, pred, kind='all', rounding=2, pxfigsize=(800,400), template='pl
                 pxfigsize=pxfigsize,
                 template=template
             )
-        
+
         raise ClassificationQCError(
             f'`fact` (of type "{type(fact)}") and `pred` (of type "{type(pred)}")'
             'dont match any of the possible combinations, and thus, outcomes:\n'
@@ -206,7 +206,7 @@ def qcplot(fact, pred, kind='all', rounding=2, pxfigsize=(800,400), template='pl
             '#2. Series,    DataFrame       => one-hot encoding and then #1\n'
             '#3. Series,    Series          => conversion for binary classification and then #1'
         ) from None
-                
+
 
 
 
@@ -223,10 +223,9 @@ class ThresholdClassifier:
                     fbeta = ((1+beta**2) * precision * recall) / (beta ** 2 * precision + recall)
                     self.thresholds[col] = thresholds[np.argmax(fbeta)]
         return self
-    
+
     def predict(self, probas):
         res = pd.Series(index=probas.index, dtype=float)
         for col, threshold in self.thresholds.items():
             res[(probas[col] > threshold) & res.isna()] = col
         return res.fillna(probas.idxmax(axis=1))
-  
